@@ -1,0 +1,1373 @@
+---
+title: 'How landscape archaeology can inform future sustainable soil management through GIS-modelling'
+author: "Filippo Brandolini"
+date: "03/06/2022"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(yaml)
+library(markdown)
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+
+NOTES:
+The data are uploaded from the 'GeoTiff' & 'GPKG' folders.
+The plotted Article_Figures and .Tables files are saved in the 'Output' folder.
+
+---
+## Load Libraries
+```{r echo=FALSE, results='hide', include=FALSE}
+
+LibPack<-c("raster","sf","sp","dplyr","stars","rgdal","rgeos","maptools","ggplot2","ggforce","ggspatial","gridExtra", "RColorBrewer")
+
+not_installed <- LibPack[!(LibPack %in% installed.packages()[ , "Package"])]    # Extract not installed packages
+if(length(not_installed)) install.packages(not_installed)    
+
+lapply(LibPack, require, character.only=TRUE)
+```
+The following libraries were loaded: 'LibPack'.
+
+# Loading Data
+```{r results='hide'}
+
+#Regional RUSLE Factors
+
+R <- raster("GeoTiff/R_factor_ER.tif")
+K <- raster("GeoTiff/K_factor_ER.tif")
+LS <- raster("GeoTiff/LS_factor_ER.tif")
+C_ER <-raster("GeoTiff/C_factor_ER.tif")
+
+hlc_v <- as_Spatial(st_read("GPKG/hlc_v.gpkg"))
+prj_area <- as_Spatial(st_read("GPKG/roi.gpkg"))
+
+prj_area$long <- coordinates(prj_area)[,1]
+prj_area$lat <- coordinates(prj_area)[,2]
+
+roi<-fortify(prj_area)
+
+
+```
+```{r echo=FALSE, results='hide'}
+
+# Plot Regional Rusle Factors
+
+R2<- data.frame(rasterToPoints(R))
+colnames(R2)<- c("x","y","value")
+head(R2)
+K2<- data.frame(rasterToPoints(K))
+colnames(K2)<- c("x","y","value")
+head(K2)
+LS2<- data.frame(rasterToPoints(LS))
+colnames(LS2)<- c("x","y","value")
+head(LS2)
+C_ER2<- data.frame(rasterToPoints(C_ER))
+colnames(C_ER2)<- c("x","y","value")
+head(C_ER2)
+
+png(width=1000,height=1000,res = 100, file="Output/Article_Figures/Regional_Rusle_Factors.png")
+
+R2_vis<-ggplotGrob(ggplot(R2, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                     scale_fill_distiller(type = "seq",palette = "Blues", 
+                                          guide = "colourbar", aesthetics = "fill",
+                                          name= "R (MJ mm ha-1 h-1 yr-1) ",
+                                          direction= 1)+
+                     geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                     labs(title = " ", adj= 1, x = "",y = "")+
+                     theme(plot.margin=unit(c(-0.5, -0.5, -0.5, -0.5), "cm"),
+                           legend.position = "top",
+                           legend.key.height = unit(0.3, 'cm'),
+                           legend.title = element_text(size=12),
+                           legend.text = element_text(size=8),
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+K2_vis<-ggplotGrob(ggplot(K2, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                     scale_fill_distiller(type = "seq",palette = "Oranges", 
+                                          guide = "colourbar", aesthetics = "fill",
+                                          name="K (Mg h MJ-1 mm-1) ",
+                                          direction= 1)+
+                     geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                     labs(title = " ", adj= 1, x = "",y = "")+
+                     theme(plot.margin=unit(c(-0.5, -0.5, -0.5, -0.5), "cm"),
+                           legend.position = "top",
+                           legend.key.height = unit(0.3, 'cm'),
+                           legend.title = element_text(size=12),
+                           legend.text = element_text(size=8),
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+LS2_vis<-ggplotGrob(ggplot(LS2, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                      scale_fill_distiller(type = "seq",palette = "Purples", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           name="LS (dimensionless) ",
+                                           direction= 1)+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      labs(title = " ", adj= 1, x = "",y = "")+
+                      theme(plot.margin=unit(c(-0.5, -0.5, -0.5, -0.5), "cm"),
+                           legend.position = "top",
+                           legend.key.height = unit(0.3, 'cm'),
+                           legend.title = element_text(size=12),
+                           legend.text = element_text(size=8),
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+
+C_ER2_vis<-ggplotGrob(ggplot(C_ER2, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                        scale_fill_distiller(type = "seq",palette = "Greens", 
+                                             guide = "colourbar", aesthetics = "fill",
+                                             name="C (dimensionless) ",
+                                             direction= 1)+
+                        geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                        labs(title = " ", adj= 1, x = "",y = "")+
+                        ggspatial::annotation_scale(location="br",
+                                                  plot_unit="km",
+                                                  style="ticks",
+                                                  pad_x = unit(2, "cm"))+
+                        ggspatial::annotation_north_arrow(location= "br",
+                                                        height = unit(1, "cm"),
+                                                        width = unit(1, "cm"),
+                                                        # pad_x = unit(, "cm"),
+                                                        style = north_arrow_orienteering(
+                                                          line_width = 1,
+                                                          line_col = "black",
+                                                          fill = c("black", "black"),
+                                                          text_col = "black",
+                                                          text_family = "",
+                                                          text_face = NULL,
+                                                          text_size = 3,
+                                                          text_angle = 0))+
+                        theme(plot.margin=unit(c(-0.5, -0.5, -0.5, -0.5), "cm"),
+                           legend.position = "top",
+                           legend.key.height = unit(0.3, 'cm'),
+                           legend.title = element_text(size=12),
+                           legend.text = element_text(size=8),
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+grid.arrange(R2_vis,K2_vis,LS2_vis,C_ER2_vis,
+             widths = c(1,1),
+             layout_matrix = rbind(c(1,2),
+                                   c(3,4)))
+
+dev.off()
+
+```
+```{r echo=FALSE, out.width="100%", fig.cap="Regional_Rusle_Factors", fig.align='center'}
+knitr::include_graphics("Output/Article_Figures/Regional_Rusle_Factors.png")
+```
+
+```{r echo=FALSE, results='hide'}
+#Getting coordinates
+
+hlc_v$x <- coordinates(hlc_v)[,1]
+hlc_v$y <- coordinates(hlc_v)[,2]
+
+# Diachronic C Factors
+
+# C_Factor_1950
+
+hlc_v$C_Factor_50 <- case_when(hlc_v$LU_1950 == "Non irrigated arable land" ~ 0.1232,
+                           hlc_v$LU_1950 == "Agriculture (Generic)" ~ 0.1232,
+                           hlc_v$LU_1950 == "Grassland" ~ 0.0435,
+                           hlc_v$LU_1950 == "Sparsely vegetated areas" ~ 0.2652,
+                           hlc_v$LU_1950 == "Transitional woodland-shrub" ~0.0219,
+                           hlc_v$LU_1950 == "Mixed Forest" ~ 0.0011,
+                           hlc_v$LU_1950 == "Residential area" ~ 0.0003,
+                           hlc_v$LU_1950 == "Greenhouse" ~ 0.0003,
+                           hlc_v$LU_1950 == "Industrial area" ~ 0.0003,
+                           hlc_v$LU_1950 == "Agro - Forestry" ~ 0.0881,
+                           hlc_v$LU_1950 == "Vineyard" ~ 0.3527,
+                           hlc_v$LU_1950 == "Fruit Trees" ~ 0.2188,
+                           hlc_v$LU_1950 == "Water body" ~ 0)
+
+
+C_50_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","C_Factor_50")))), 
+                    "Raster")), layer = 3), R), 'Output/Rasters/C_Factor_1950.tif', format="GTiff", overwrite=TRUE)
+
+# C_Factor_1970
+
+hlc_v$C_Factor_70 <- case_when(hlc_v$LU_1970 == "Non irrigated arable land" ~ 0.1232,
+                           hlc_v$LU_1970 == "Agriculture (Generic)"~ 0.1232,
+                           hlc_v$LU_1970 == "Grassland" ~ 0.0435,
+                           hlc_v$LU_1970 == "Sparsely vegetated areas" ~ 0.2652,
+                           hlc_v$LU_1970 == "Transitional woodland-shrub" ~ 0.0219,
+                           hlc_v$LU_1970 == "Mixed Forest" ~ 0.0011,
+                           hlc_v$LU_1970 == "Residential area" ~ 0.0003,
+                           hlc_v$LU_1970 == "Greenhouse" ~ 0.0003,
+                           hlc_v$LU_1970 == "Industrial area" ~ 0.0003,
+                           hlc_v$LU_1970 == "Agro - Forestry" ~ 0.0881,
+                           hlc_v$LU_1970 == "Vineyard" ~ 0.3527,
+                           hlc_v$LU_1970 == "Fruit Trees" ~ 0.2188,
+                           hlc_v$LU_1970 == "Water body" ~ 0)
+
+C_70_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","C_Factor_70")))), 
+                    "Raster")), layer = 3), R), 'Output/Rasters/C_Factor_1970.tif', format="GTiff", overwrite=TRUE)
+
+# C_Factor_2000
+
+hlc_v$C_Factor_00 <- case_when(hlc_v$LU_2000 == "Non irrigated arable land"~ 0.1232,
+                           hlc_v$LU_2000 == "Grassland" ~ 0.0435,
+                           hlc_v$LU_2000 == "Sparsely vegetated areas" ~ 0.2652,
+                           hlc_v$LU_2000 == "Transitional woodland-shrub" ~ 0.0219,
+                           hlc_v$LU_2000 == "Mixed Forest" ~ 0.0011,
+                           hlc_v$LU_2000 == "Residential area" ~ 0.0003,
+                           hlc_v$LU_2000 == "Greenhouse" ~ 0.0003,
+                           hlc_v$LU_2000 == "Industrial area" ~ 0.0003,
+                           hlc_v$LU_2000 == "Agro - Forestry" ~ 0.0881,
+                           hlc_v$LU_2000 == "Vineyard" ~ 0.3527,
+                           hlc_v$LU_2000 == "Fruit Trees" ~ 0.2188,
+                           hlc_v$LU_2000 == "Water body" ~ 0)
+
+C_00_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","C_Factor_00")))), 
+                    "Raster")), layer = 3), R), 'Output/Rasters/C_Factor_2000.tif', format="GTiff", overwrite=TRUE)
+
+# C_Factor_2010
+
+hlc_v$C_Factor_10 <- case_when(hlc_v$LU_2010 == "Non irrigated arable land" ~ 0.1232,
+                           hlc_v$LU_2010 == "Grassland" ~ 0.0435,
+                            hlc_v$LU_2010 == "Sparsely vegetated areas" ~ 0.2652,
+                            hlc_v$LU_2010 == "Transitional woodland-shrub" ~ 0.0219,
+                            hlc_v$LU_2010 == "Mixed Forest" ~ 0.0011,
+                            hlc_v$LU_2010 == "Residential area" ~ 0.0003,
+                            hlc_v$LU_2010 == "Greenhouse" ~ 0.0003,
+                            hlc_v$LU_2010 == "Industrial area" ~ 0.0003,
+                            hlc_v$LU_2010 == "Agro - Forestry" ~ 0.0881,
+                            hlc_v$LU_2010 == "Vineyard" ~ 0.3527,
+                            hlc_v$LU_2010 == "Fruit Trees" ~ 0.2188,
+                            hlc_v$LU_2010 == "Water body" ~ 0)
+
+C_10_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","C_Factor_10")))), 
+                    "Raster")), layer = 3), R), 'Output/Rasters/C_Factor_2010.tif', format="GTiff", overwrite=TRUE)
+
+
+```
+```{r echo=FALSE, results='hide'}
+# Diachronic P Factors
+hlc_v$slope_mean[hlc_v$Slope_mean>45 ] <- 45
+
+#P_Factor_1950
+
+hlc_v$P_Factor_50 <- ((hlc_v$Area/hlc_v$NoF_1950)*hlc_v$Area^-1)/(hlc_v$slope_mean/100)
+
+#P_Factor_1950 calibrated with the Boundary Loss (BL) HLC attribute.
+
+hlc_v$P_Factor_50 <- case_when(hlc_v$BL_1950 == "Much"~(hlc_v$P_Factor_50*1.8),
+          hlc_v$BL_1950 == "Some"~(hlc_v$P_Factor_50*1.4),
+          hlc_v$BL_1950 == "Little"~(hlc_v$P_Factor_50*1.2),
+          TRUE ~ (hlc_v$P_Factor_50))
+
+## terrace farming  was calculated in the P factor according with the values 
+## proposed by Parveen and Kumar 2012 --> http://www.scirp.org/journal/PaperInformation.aspx?PaperID=26324
+
+hlc_v$P_Factor_50 <- case_when((hlc_v$CLASS_bt_1950 == 'TERRACE - Step Terrace' 
+           & hlc_v$slope_mean > 0 & hlc_v$slope_mean < 7)~ 0.10,
+          (hlc_v$CLASS_bt_1950 == 'TERRACE - Contour Terrace' 
+           & hlc_v$slope_mean > 0 & hlc_v$slope_mean < 7)~ 0.10,
+          (hlc_v$CLASS_bt_1950 == 'TERRACE - Step Terrace' 
+           & hlc_v$slope_mean > 7 & hlc_v$slope_mean < 11.3)~ 0.12,
+          (hlc_v$CLASS_bt_1950 == 'TERRACE - Contour Terrace' 
+           & hlc_v$slope_mean > 7 & hlc_v$slope_mean < 11.3)~ 0.12,
+          (hlc_v$CLASS_bt_1950 == 'TERRACE - Step Terrace' 
+           & hlc_v$slope_mean > 11.3 & hlc_v$slope_mean < 17.6)~ 0.16,
+          (hlc_v$CLASS_bt_1950 == 'TERRACE - Contour Terrace' 
+           & hlc_v$slope_mean > 11.3 & hlc_v$slope_mean < 17.6)~ 0.16,
+          (hlc_v$CLASS_bt_1950 == 'TERRACE - Step Terrace' 
+           & hlc_v$slope_mean > 17.6 & hlc_v$slope_mean < 26.8)~ 0.18,
+          (hlc_v$CLASS_bt_1950 == 'TERRACE - Contour Terrace' 
+           & hlc_v$slope_mean > 17.6 & hlc_v$slope_mean < 26.8)~ 0.18,
+          (hlc_v$CLASS_bt_1950 == 'TERRACE - Step Terrace' 
+           & hlc_v$slope_mean > 26.8)~ 0.18,
+          (hlc_v$CLASS_bt_1950 == 'TERRACE - Contour Terrace' 
+           & hlc_v$slope_mean > 26.8)~ 0.18,
+                  TRUE ~ (hlc_v$P_Factor_50))
+
+hlc_v$P_Factor_50[is.na(hlc_v$P_Factor_50)] <- 1
+hlc_v$P_Factor_50[hlc_v$P_Factor_50 > 1 ] <- 1
+
+P_50_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","P_Factor_50")))), 
+                    "Raster")), layer = 3), R), 'Output/Rasters/P_Factor_1950.tif', format="GTiff", overwrite=TRUE)
+
+#P_Factor_1970
+
+hlc_v$P_Factor_70 <- ((hlc_v$Area/hlc_v$NoF_1970)*hlc_v$Area^-1)/(hlc_v$slope_mean/100)
+
+#P_Factor_1970 calibrated with the Boundary Loss (BL) HLC attribute.
+
+hlc_v$P_Factor_70 <- case_when(hlc_v$BL_1970 == "Much"~(hlc_v$P_Factor_70*1.8),
+                               hlc_v$BL_1970 == "Some"~(hlc_v$P_Factor_70*1.4),
+                               hlc_v$BL_1970 == "Little"~(hlc_v$P_Factor_70*1.2),
+                               TRUE ~ (hlc_v$P_Factor_70))
+                               
+                              
+## terrace farming  was calculated in the P factor according with the values 
+## proposed by Parveen and Kumar 2012 --> http://www.scirp.org/journal/PaperInformation.aspx?PaperID=26324
+
+hlc_v$P_Factor_70 <- case_when((hlc_v$CLASS_bt_1970 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 0 & hlc_v$slope_mean < 7)~ 0.10,
+                               (hlc_v$CLASS_bt_1970 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 0 & hlc_v$slope_mean < 7)~ 0.10,
+                               (hlc_v$CLASS_bt_1970 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 7 & hlc_v$slope_mean < 11.3)~ 0.12,
+                               (hlc_v$CLASS_bt_1970 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 7 & hlc_v$slope_mean < 11.3)~ 0.12,
+                               (hlc_v$CLASS_bt_1970 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 11.3 & hlc_v$slope_mean < 17.6)~ 0.16,
+                               (hlc_v$CLASS_bt_1970 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 11.3 & hlc_v$slope_mean < 17.6)~ 0.16,
+                               (hlc_v$CLASS_bt_1970 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 17.6 & hlc_v$slope_mean < 26.8)~ 0.18,
+                               (hlc_v$CLASS_bt_1970 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 17.6 & hlc_v$slope_mean < 26.8)~ 0.18,
+                               (hlc_v$CLASS_bt_1970 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 26.8)~ 0.18,
+                               (hlc_v$CLASS_bt_1970 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 26.8)~ 0.18,
+                               TRUE ~ (hlc_v$P_Factor_70))
+
+hlc_v$P_Factor_70[is.na(hlc_v$P_Factor_70)] <- 1
+hlc_v$P_Factor_70[hlc_v$P_Factor_70 > 1 ] <- 1
+
+P_70_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","P_Factor_70")))), 
+                                         "Raster")), layer = 3), R), 'Output/Rasters/P_Factor_1970.tif', format="GTiff", overwrite=TRUE)
+
+#P_Factor_2000
+
+hlc_v$P_Factor_00 <- ((hlc_v$Area/hlc_v$NoF_2000)*hlc_v$Area^-1)/(hlc_v$slope_mean/100)
+
+#P_Factor_2000 calibrated with the Boundary Loss (BL) HLC attribute.
+
+hlc_v$P_Factor_00 <- case_when(hlc_v$BL_2000 == "Much"~(hlc_v$P_Factor_00*1.8),
+                               hlc_v$BL_2000 == "Some"~(hlc_v$P_Factor_00*1.4),
+                               hlc_v$BL_2000 == "Little"~(hlc_v$P_Factor_00*1.2),
+                               TRUE ~ (hlc_v$P_Factor_00))
+
+## terrace farming  was calculated in the P factor according with the values 
+## proposed by Parveen and Kumar 2012 --> http://www.scirp.org/journal/PaperInformation.aspx?PaperID=26324
+                               
+hlc_v$P_Factor_00 <- case_when((hlc_v$CLASS_bt_2000 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 0 & hlc_v$slope_mean < 7)~ 0.10,
+                               (hlc_v$CLASS_bt_2000 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 0 & hlc_v$slope_mean < 7)~ 0.10,
+                               (hlc_v$CLASS_bt_2000 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 7 & hlc_v$slope_mean < 11.3)~ 0.12,
+                               (hlc_v$CLASS_bt_2000 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 7 & hlc_v$slope_mean < 11.3)~ 0.12,
+                               (hlc_v$CLASS_bt_2000 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 11.3 & hlc_v$slope_mean < 17.6)~ 0.16,
+                               (hlc_v$CLASS_bt_2000 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 11.3 & hlc_v$slope_mean < 17.6)~ 0.16,
+                               (hlc_v$CLASS_bt_2000 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 17.6 & hlc_v$slope_mean < 26.8)~ 0.18,
+                               (hlc_v$CLASS_bt_2000 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 17.6 & hlc_v$slope_mean < 26.8)~ 0.18,
+                               (hlc_v$CLASS_bt_2000 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 26.8)~ 0.18,
+                               (hlc_v$CLASS_bt_2000 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 26.8)~ 0.18,
+                               TRUE ~ (hlc_v$P_Factor_00))
+
+hlc_v$P_Factor_00[is.na(hlc_v$P_Factor_00)] <- 1
+hlc_v$P_Factor_00[hlc_v$P_Factor_00 > 1 ] <- 1
+
+P_00_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","P_Factor_00")))), 
+                                         "Raster")), layer = 3), R), 'Output/Rasters/P_Factor_2000.tif', format="GTiff", overwrite=TRUE)
+
+#P_Factor_2010
+
+hlc_v$P_Factor_10 <- ((hlc_v$Area/hlc_v$NoF_2010)*hlc_v$Area^-1)/(hlc_v$slope_mean/100)
+
+#P_Factor_2010 calibrated with the Boundary Loss (BL) HLC attribute.
+
+hlc_v$P_Factor_10 <- case_when(hlc_v$BL_2010 == "Much"~(hlc_v$P_Factor_10*1.8),
+                               hlc_v$BL_2010 == "Some"~(hlc_v$P_Factor_10*1.4),
+                               hlc_v$BL_2010 == "Little"~(hlc_v$P_Factor_10*1.2),
+                               TRUE ~ (hlc_v$P_Factor_00))
+
+## terrace farming  was calculated in the P factor according with the values 
+## proposed by Parveen and Kumar 2012 --> http://www.scirp.org/journal/PaperInformation.aspx?PaperID=26324
+
+hlc_v$P_Factor_10 <- case_when((hlc_v$CLASS_bt_2010 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 0 & hlc_v$slope_mean < 7)~ 0.10,
+                               (hlc_v$CLASS_bt_2010 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 0 & hlc_v$slope_mean < 7)~ 0.10,
+                               (hlc_v$CLASS_bt_2010 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 7 & hlc_v$slope_mean < 11.3)~ 0.12,
+                               (hlc_v$CLASS_bt_2010 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 7 & hlc_v$slope_mean < 11.3)~ 0.12,
+                               (hlc_v$CLASS_bt_2010 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 11.3 & hlc_v$slope_mean < 17.6)~ 0.16,
+                               (hlc_v$CLASS_bt_2010 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 11.3 & hlc_v$slope_mean < 17.6)~ 0.16,
+                               (hlc_v$CLASS_bt_2010 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 17.6 & hlc_v$slope_mean < 26.8)~ 0.18,
+                               (hlc_v$CLASS_bt_2010 == 'TERRACE - Contour Terrace'
+                                & hlc_v$slope_mean > 17.6 & hlc_v$slope_mean < 26.8)~ 0.18,
+                               (hlc_v$CLASS_bt_2010 == 'TERRACE - Step Terrace'
+                                & hlc_v$slope_mean > 26.8)~ 0.18,
+                               (hlc_v$CLASS_bt_2010 == 'TERRACE - Contour Terrace' 
+                                & hlc_v$slope_mean > 26.8)~ 0.18,
+                               TRUE ~ (hlc_v$P_Factor_10))
+
+hlc_v$P_Factor_10[is.na(hlc_v$P_Factor_10)] <- 1
+hlc_v$P_Factor_10[hlc_v$P_Factor_10 > 1 ] <- 1
+
+P_10_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","P_Factor_10")))), 
+                                         "Raster")), layer = 3), R), 'Output/Rasters/P_Factor_2010.tif', format="GTiff", overwrite=TRUE)
+
+```
+```{r echo=FALSE, results='hide'}
+# Plot C Factors Rasters
+
+hlc_sf <- st_as_sf(hlc_v)
+hlc_r <- st_rasterize(hlc_sf)
+hlc_f <- fortify(data.frame(hlc_r))
+
+png(width=3000,height=1000,res = 150, 
+    file="Output/Article_Figures/C_Factors_HLC_TLs.png")
+
+C50_vis<-ggplotGrob(ggplot(hlc_f, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = C_Factor_50))+
+                      scale_fill_distiller(type = "seq",palette = "Greens", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           direction= 1, na.value = "transparent")+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      annotate(geom="text", x=610000/1000, y=4930700/1000, label="1950s", size = 5)+
+                      labs(title = " ", adj= 1, x = "",y = "")+
+                      theme(plot.margin=unit(c(-0.5, 0, -0.5, -0.5), "cm"),
+                            # plot.title = element_text(size=12, hjust = 0.5),
+                            legend.position = "none",
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+C70_vis<-ggplotGrob(ggplot(hlc_f, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = C_Factor_70))+
+                      scale_fill_distiller(type = "seq",palette = "Greens", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           direction= 1, na.value = "transparent")+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      annotate(geom="text", x=610000/1000, y=4930700/1000, label="1970s", size = 5)+
+                      labs(title = " ", adj= 1, x = "",y = "")+
+                      theme(plot.margin=unit(c(-0.5, 0, -0.5, -0.5), "cm"),
+                            #plot.title = element_text(size=12, hjust = 0.5),
+                            legend.position = "none",
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+C00_vis<-ggplotGrob(ggplot(hlc_f, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = C_Factor_00))+
+                      scale_fill_distiller(type = "seq",palette = "Greens", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           direction= 1,na.value = "transparent")+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      annotate(geom="text", x=610000/1000, y=4930700/1000, label="2000s", size = 5)+
+                      labs(title = "", adj= 1, x = "",y = "")+
+                      theme(plot.margin=unit(c(-0.5, 0, -0.5, -0.5), "cm"),
+                            #plot.title = element_text(size=12, hjust = 0.5),
+                            legend.position = "none",
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+
+C10_vis<-ggplotGrob(ggplot(hlc_f, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = C_Factor_10))+
+                      scale_fill_distiller(type = "seq",palette = "Greens", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           direction= 1,na.value = "transparent")+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      annotate(geom="text", x=610000/1000, y=4930700/1000, label="2010s", size = 5)+
+                      labs(title = "", adj= 1, x = "",y = "")+
+                      ggspatial::annotation_scale(location="br",
+                                                  plot_unit="km",
+                                                  style="ticks",
+                                                  pad_x = unit(2, "cm"))+
+                      ggspatial::annotation_north_arrow(location= "br",
+                                                        height = unit(1, "cm"),
+                                                        width = unit(1, "cm"),
+                                                        # pad_x = unit(, "cm"),
+                                                        style = north_arrow_orienteering(
+                                                          line_width = 1,
+                                                          line_col = "black",
+                                                          fill = c("black", "black"),
+                                                          text_col = "black",
+                                                          text_family = "",
+                                                          text_face = NULL,
+                                                          text_size = 3,
+                                                          text_angle = 0))+
+                      theme(plot.margin=unit(c(-0.5, 0, -0.5, -0.5), "cm"),
+                            #plot.title = element_text(size=12, hjust = 0.5),
+                            legend.position = "none",
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+combined_plot_C <- grid.arrange(C50_vis,C70_vis,C00_vis,C10_vis,
+             widths = c(1,1,1,1),
+             layout_matrix = rbind(c(1,2,3,4)))
+
+plot_legend_C <- ggplot(hlc_f, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = C_Factor_00))+
+                      scale_fill_distiller(type = "seq",palette = "Greens", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           name="C Factor (dimensionless)  ",
+                                           direction= 1, na.value = "transparent")+
+                      theme(legend.position = "bottom",
+                            legend.key.height = unit(1, 'cm'),
+                            legend.key.width = unit(5,'cm'),
+                            legend.title = element_text(size=15),
+                            legend.text = element_text(size=12))+
+                      coord_fixed()
+
+# function to extract legend from plot
+get_only_legend <- function(plot) {
+  plot_table <- ggplot_gtable(ggplot_build(plot))
+  legend_plot <- which(sapply(plot_table$grobs, function(x) x$name) == "guide-box")
+  legend <- plot_table$grobs[[legend_plot]]
+  return(legend)
+}
+
+# extract legend from plot1 using above function
+legend_C <- get_only_legend(plot_legend_C)   
+
+# final combined plot with shared legend
+grid.arrange(combined_plot_C, legend_C, nrow = 2, heights = c(10, 1))
+
+dev.off()
+```
+```{r echo=FALSE, out.width="100%", fig.cap="C_Factors_HLC_TLs", fig.align='center'}
+knitr::include_graphics("Output/Article_Figures/C_Factors_HLC_TLs.png")
+```
+```{r echo=FALSE, results='hide'}
+#C Factor mean values extraction
+
+C_stack <- stack(C_50_r, C_70_r, C_00_r, C_10_r)
+Mean_C <- data.frame(signif(cellStats(C_stack, "mean"), digits = 4))
+row.names(Mean_C) <- NULL
+colnames(Mean_C) <- 'C_Factor'
+Mean_C <- cbind(Mean_C, Period = c("1950s","1970s","2000s","2010s"))
+Mean_C <- Mean_C[, c(2,1)]
+
+
+# C_Factor_value <- c(mean(hlc_v$C_Factor_50),mean(hlc_v$C_Factor_70),mean(hlc_v$C_Factor_00),mean(hlc_v$C_Factor_10))
+# Period <- c("1950s","1970s","2000s","2010s")
+# Mean_C <- data.frame(Period, C_Factor_value)
+
+```
+```{r echo=FALSE, results='hide'}
+# PLOT: C Factors mean values graph
+
+png(width=1500,height=1000,res = 150, file="Output/Article_Figures/C_Factor_mean_values.png")
+
+Mean_C2 <- ggplot(Mean_C, aes(x=Period, y= C_Factor, group=1)) +
+  geom_line(size = 1, colour="lightgreen", linejoin='round') +
+  geom_point(size=4, colour="darkgreen")+
+  theme_light()+
+  theme(axis.text=element_text(size=10),
+        axis.title = element_text(size=12))+
+  xlab("HLC Period")+
+  ylab("C Factor Mean Values")
+print(Mean_C2)
+dev.off()
+```
+```{r echo=FALSE, out.width="100%", fig.cap="C_Factor_mean_values", fig.align='center'}
+knitr::include_graphics("Output/Article_Figures/C_Factor_mean_values.png")
+```
+```{r echo=FALSE, results='hide'}
+#P Factor mean values extraction
+
+P_stack <- stack(P_50_r, P_70_r, P_00_r, P_10_r)
+
+Mean_P <- data.frame(signif(cellStats(P_stack, "mean"), digits = 4))
+row.names(Mean_P) <- NULL
+colnames(Mean_P) <- 'P_Factor'
+Mean_P <- cbind(Mean_P, Period = c("1950s","1970s","2000s","2010s"))
+Mean_P <- Mean_P[, c(2,1)]
+```
+```{r echo=FALSE, results='hide'}
+# PLOT: P Factors mean values graph
+
+png(width=1500,height=1000,res = 150, file="Output/Article_Figures/P_Factor_mean_values.png")
+
+Mean_P2 <- ggplot(Mean_P, aes(x=Period, y= P_Factor, group=1)) +
+  geom_line(size = 1, colour="red", linejoin='round') +
+  geom_point(size=4, colour="darkred")+
+  theme_light()+
+  theme(axis.text=element_text(size=10),
+        axis.title = element_text(size=12))+
+  xlab("HLC Period")+
+  ylab("P Factor Mean Values")
+print(Mean_P2)
+dev.off()
+```
+
+```{r echo=FALSE, out.width="100%", fig.cap="P_Factor_mean_values", fig.align='center'}
+knitr::include_graphics("Output/Article_Figures/P_Factor_mean_values.png")
+```
+```{r echo=FALSE, results='hide'}
+# PLOT: P Factor GoF
+
+png(width=1500,height=800,res = 150, file="Output/Article_Figures/P_Factor_GoF.png")
+
+
+P_GoF_1 <- ggplotGrob(ggplot(data = hlc_f, aes(x = P_Factor_10, y = NoF_2010)) +
+                        geom_point(color = "red", shape = 16, size= 1)+
+                        geom_smooth(method=lm, level=0.99, col='black', size= 0.5)+
+                        theme_light()+
+                        theme(axis.text=element_text(size=10),
+                              axis.title = element_text(size=12))+
+                        xlim(0.18,0.99)+
+                        ylim(0,35)+
+                        xlab("P Factor 2010s") +
+                        ylab("Number of Fields"))
+
+P_GoF_2 <- ggplotGrob(ggplot(data = hlc_f, aes(x = P_Factor_10, y = slope_mean)) +
+                        geom_point(color = "darkgreen", shape=16, size= 1)+
+                        geom_smooth(method=lm, level=0.99, col='black', size= 0.5)+
+                        theme_light()+
+                        theme(axis.text=element_text(size=10),
+                              axis.title = element_text(size=12))+
+                        xlim(0.18,0.99)+
+                        ylim(15,44)+
+                        xlab("P Factor 2010s") +
+                        ylab("Slope (%)"))
+
+
+grid.arrange(P_GoF_1,P_GoF_2,
+             widths = c(1,1),
+             layout_matrix = rbind(c(1,2)))
+
+
+dev.off()
+```
+```{r echo=FALSE, out.width="100%", fig.cap="P_Factor_GoF", fig.align='center'}
+knitr::include_graphics("Output/Article_Figures/P_Factor_GoF.png")
+```
+```{r echo=FALSE, results='hide'}
+
+# Plot P Factors Rasters
+
+P50<- data.frame(rasterToPoints(P_50_r))
+colnames(P50)<- c("x","y","value")
+head(P50)
+P70<- data.frame(rasterToPoints(P_70_r))
+colnames(P70)<- c("x","y","value")
+head(P70)
+P00<- data.frame(rasterToPoints(P_00_r))
+colnames(P00)<- c("x","y","value")
+head(P00)
+P10<- data.frame(rasterToPoints(P_10_r))
+colnames(P10)<- c("x","y","value")
+head(P10)
+
+png(width=3000,height=1000,res = 150, file="Output/Article_Figures/P_Factors_HLC_TLs.png")
+
+P50_vis<-ggplotGrob(ggplot(P50, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                      scale_fill_distiller(type = "seq",palette = "Reds", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           direction= 1)+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      annotate(geom="text", x=610000/1000, y=4930700/1000, label="1950s", size = 5)+
+                      labs(title = "", x = "",y = "")+
+                      theme(plot.margin=unit(c(-0.5, 0, -0.5, -0.5), "cm"),
+                            #plot.title = element_text(size=12, hjust = 0.5),
+                            legend.position = "none",
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+P70_vis<-ggplotGrob(ggplot(P70, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                      scale_fill_distiller(type = "seq",palette = "Reds", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           direction= 1)+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      annotate(geom="text", x=610000/1000, y=4930700/1000, label="1970s", size = 5)+
+                      labs(title = "", x = "",y = "")+
+                      theme(plot.margin=unit(c(-0.5, 0, -0.5, -0.5), "cm"),
+                            # plot.title = element_text(size=12, hjust = 0.5),
+                            legend.position = "none",
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+P00_vis<-ggplotGrob(ggplot(P00, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                      scale_fill_distiller(type = "seq",palette = "Reds", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           direction= 1)+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      annotate(geom="text", x=610000/1000, y=4930700/1000, label="2000s", size = 5)+
+                      labs(title = "", x = "",y = "")+
+                      theme(plot.margin=unit(c(-0.5, 0, -0.5, -0.5), "cm"),
+                            # plot.title = element_text(size=12, hjust = 0.5),
+                            legend.position = "none",
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+
+P10_vis<-ggplotGrob(ggplot(P10, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                      scale_fill_distiller(type = "seq",palette = "Reds", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           direction= 1)+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      annotate(geom="text", x=610000/1000, y=4930700/1000, label="2010s", size = 5)+
+                      labs(title = "", x = "",y = "")+
+                       ggspatial::annotation_scale(location="br",
+                                                  plot_unit="km",
+                                                  style="ticks",
+                                                  pad_x = unit(2, "cm"))+
+                      ggspatial::annotation_north_arrow(location= "br",
+                                                        height = unit(1, "cm"),
+                                                        width = unit(1, "cm"),
+                                                        # pad_x = unit(, "cm"),
+                                                        style = north_arrow_orienteering(
+                                                          line_width = 1,
+                                                          line_col = "black",
+                                                          fill = c("black", "black"),
+                                                          text_col = "black",
+                                                          text_family = "",
+                                                          text_face = NULL,
+                                                          text_size = 3,
+                                                          text_angle = 0))+
+                      theme(plot.margin=unit(c(-0.5, 0, -0.5, -0.5), "cm"),
+                            # plot.title = element_text(size=12, hjust = 0.5),
+                            legend.position = "none",
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+combined_plot_P <- grid.arrange(P50_vis,P70_vis,P00_vis,P10_vis,
+             widths = c(1,1,1,1),
+             layout_matrix = rbind(c(1,2,3,4)))
+
+plot_legend_P <- ggplot(P50, aes(x=x/10000, y=y/10000)) + geom_tile(aes(fill = value))+
+                  scale_fill_distiller(type = "seq",palette = "Reds", 
+                                       guide = "colourbar", aesthetics = "fill", name = "P Factor (dimensionless)  ",
+                                       direction= 1)+
+  theme(legend.position = "bottom",
+        legend.key.height = unit(1, 'cm'),
+        legend.key.width = unit(5,'cm'),
+        legend.title = element_text(size=15),
+        legend.text = element_text(size=12))+
+  coord_fixed()
+
+# function to extract legend from plot
+get_only_legend <- function(plot) {
+  plot_table <- ggplot_gtable(ggplot_build(plot))
+  legend_plot <- which(sapply(plot_table$grobs, function(x) x$name) == "guide-box")
+  legend <- plot_table$grobs[[legend_plot]]
+  return(legend)
+}
+
+# extract legend from plot1 using above function
+legend_P <- get_only_legend(plot_legend_P)   
+
+# final combined plot with shared legend
+grid.arrange(combined_plot_P, legend_P, nrow = 2, heights = c(10, 1))
+
+dev.off()
+```
+```{r echo=FALSE, out.width="100%", fig.cap="P_Factors_HLC_TLs", fig.align='center'}
+knitr::include_graphics("Output/Article_Figures/P_Factors_HLC_TLs.png")
+```
+
+```{r echo=FALSE, results='hide'}
+# Plot HLC-RUSLE Models
+
+HR50<- data.frame(rasterToPoints(R*K*LS*C_50_r*P_50_r))
+colnames(HR50)<- c("x","y","value")
+head(HR50)
+MeanHR50 <- signif((mean(HR50$value)), digits = 4)
+
+HR70<- data.frame(rasterToPoints(R*K*LS*C_70_r*P_70_r))
+colnames(HR70)<- c("x","y","value")
+head(HR70)
+MeanHR70 <- signif((mean(HR70$value)), digits = 4)
+
+HR00<- data.frame(rasterToPoints(R*K*LS*C_00_r*P_00_r))
+colnames(HR00)<- c("x","y","value")
+head(HR00)
+MeanHR00 <- signif((mean(HR00$value)), digits = 4)
+
+HR10<- data.frame(rasterToPoints(R*K*LS*C_10_r*P_10_r))
+colnames(HR10)<- c("x","y","value")
+head(HR10)
+MeanHR10 <- signif((mean(HR10$value)), digits = 4)
+
+
+png(width=1000,height=1000,res = 100, file="Output/Article_Figures/HLC_Rusle_models.png")
+
+HR50_vis<-ggplotGrob(ggplot(HR50, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                      scale_fill_distiller(type = "seq",palette = "RdYlGn", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           limits = c(0,188), name="Mg ha-1 yr-1",
+                                           direction= -1)+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      annotate(geom="text", x=609199/1000, y=4931000/1000, label="1950s", size = 3)+
+                       annotate(geom="text", x=610000/1000, y=4930700/1000, label="A mean = ", size = 3)+
+                      annotate(geom="text", x=611200/1000, y=4930700/1000, label= as.factor(MeanHR50), size = 3)+
+                      labs(subtitle = "", x = "",y = "")+
+                      theme(plot.margin=unit(c(-0.5, 0,-0.5,-0.5), "cm"),
+                            plot.subtitle = element_text(size=8, hjust = 0.5),
+                            legend.position = "none",
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+HR70_vis<-ggplotGrob(ggplot(HR70, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                       scale_fill_distiller(type = "seq",palette = "RdYlGn", 
+                                            guide = "colourbar", aesthetics = "fill",
+                                            limits = c(0,188), name="Mg ha-1 yr-1",
+                                            direction= -1)+
+                       geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                       annotate(geom="text", x=609199/1000, y=4931000/1000, label="1970s", size = 3)+
+                       annotate(geom="text", x=610000/1000, y=4930700/1000, label="A mean = ", size = 3)+
+                       annotate(geom="text", x=611200/1000, y=4930700/1000, label= as.factor(MeanHR70), size = 3)+
+                       labs(title = "", x = "",y = "")+
+                       theme(plot.margin=unit(c(-0.5, 0, -0.5,-0.5), "cm"),
+                             plot.title = element_text(size=8),
+                             legend.position = "none",
+                             axis.text.x = element_blank(),
+                             axis.text.y = element_blank(),
+                             axis.ticks = element_blank(),
+                             rect = element_blank())+
+                       coord_fixed())
+
+HR00_vis<-ggplotGrob(ggplot(HR00, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                       scale_fill_distiller(type = "seq",palette = "RdYlGn", 
+                                            guide = "colourbar", aesthetics = "fill",
+                                            limits = c(0,188), name="Mg ha-1 yr-1",
+                                            direction= -1)+
+                       geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                       annotate(geom="text", x=609199/1000, y=4931000/1000, label="2000s", size = 3)+
+                       annotate(geom="text", x=610000/1000, y=4930700/1000, label="A mean = ", size = 3)+
+                       annotate(geom="text", x=611200/1000, y=4930700/1000, label= as.factor(MeanHR00), size = 3)+
+                       labs(title = "", x = "",y = "")+
+                       theme(plot.margin=unit(c(-0.5, 0,-0.5,-0.5), "cm"),
+                             plot.title = element_text(size=8),
+                             legend.position = "none",
+                             axis.text.x = element_blank(),
+                             axis.text.y = element_blank(),
+                             axis.ticks = element_blank(),
+                             rect = element_blank())+
+                       coord_fixed())
+
+
+HR10_vis<-ggplotGrob(ggplot(HR10, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                       scale_fill_distiller(type = "seq",palette = "RdYlGn", 
+                                            guide = "colourbar", aesthetics = "fill",
+                                            limits = c(0,188), name="Mg ha-1 yr-1",
+                                            direction= -1)+
+                       geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                       annotate(geom="text", x=609199/1000, y=4931000/1000, label="2010s", size = 3)+
+                       annotate(geom="text", x=610000/1000, y=4930700/1000, label="A mean = ", size = 3)+
+                       annotate(geom="text", x=611200/1000, y=4930700/1000, label= as.factor(MeanHR10), size = 3)+
+                       labs(title = "", x = "",y = "")+
+                      ggspatial::annotation_scale(location="br",
+                                                  plot_unit="km",
+                                                  style="ticks",
+                                                  pad_x = unit(2, "cm"))+
+                      ggspatial::annotation_north_arrow(location= "br",
+                                                        height = unit(1, "cm"),
+                                                        width = unit(1, "cm"),
+                                                        # pad_x = unit(, "cm"),
+                                                        style = north_arrow_orienteering(
+                                                          line_width = 1,
+                                                          line_col = "black",
+                                                          fill = c("black", "black"),
+                                                          text_col = "black",
+                                                          text_family = "",
+                                                          text_face = NULL,
+                                                          text_size = 3,
+                                                          text_angle = 0))+
+                       theme(plot.margin=unit(c(-0.5, 0,-0.5,-0.5), "cm"),
+                             plot.title = element_text(size=8),
+                             legend.position = "none",
+                             axis.text.x = element_blank(),
+                             axis.text.y = element_blank(),
+                             axis.ticks = element_blank(),
+                             rect = element_blank())+
+                       coord_fixed())
+
+combined_plot_HR <- grid.arrange(HR50_vis,HR70_vis,HR00_vis,HR10_vis,
+                                 widths = c(1,1),
+                                 layout_matrix = rbind(c(1, 2),
+                                                       c(3, 4)))
+
+
+plot_legend_HR <- ggplot(HR50, aes(x=x, y=y)) + geom_tile(aes(fill = value))+
+  scale_fill_distiller(type = "seq",palette = "RdYlGn", 
+                       guide = "colourbar", aesthetics = "fill",
+                       limits = c(0,188), name="Mg ha-1 yr-1",
+                       direction= -1)+
+  theme(legend.position = "left",
+        legend.key.height = unit(4, 'cm'),
+        legend.key.width = unit(1,'cm'),
+        legend.title = element_text(size=12),
+        legend.text = element_text(size=10))+
+  coord_fixed()
+
+# function to extract legend from plot
+get_only_legend <- function(plot) {
+  plot_table <- ggplot_gtable(ggplot_build(plot))
+  legend_plot <- which(sapply(plot_table$grobs, function(x) x$name) == "guide-box")
+  legend <- plot_table$grobs[[legend_plot]]
+  return(legend)
+}
+
+# extract legend from plot1 using above function
+legend_HR <- get_only_legend(plot_legend_HR)   
+
+# final combined plot with shared legend
+grid.arrange(legend_HR, combined_plot_HR, ncol = 2, widths = c(1, 5))
+
+dev.off()
+```
+```{r echo=FALSE, out.width="100%", fig.cap="HLC_Rusle_models", fig.align='center'}
+knitr::include_graphics("Output/Article_Figures/HLC_Rusle_models.png")
+```
+```{r echo=FALSE, results='hide'}
+# A mean values trend
+
+Mean_A <- data.frame(matrix(nrow=4, ncol=2, byrow=TRUE))
+row.names(Mean_A) <- NULL
+Mean_A<- cbind(Period = c("1950s","1970s","2000s","2010s"), Value = c(MeanHR50,MeanHR70,MeanHR00,MeanHR10))
+Mean_A
+
+```
+```{r echo=FALSE, results='hide'}
+# PLOT: A Factors mean values graph
+Mean_A <- fortify(data.frame(Mean_A))
+
+png(width=1500,height=1000,res = 150, file="Output/Article_Figures/A_Factor_mean_values.png")
+
+Mean_A2 <- ggplot(Mean_A, aes(x=Period, y= Value, group=1)) +
+  geom_line(size = 1, colour="gray", linejoin='round') +
+  geom_point(size=4, colour="black")+
+  theme_light()+
+  theme(axis.text=element_text(size=10),
+        axis.title = element_text(size=12))+
+  xlab("HLC Period")+
+  ylab("A Mean Values")
+print(Mean_A2)
+dev.off()
+
+```
+```{r echo=FALSE, out.width="100%", fig.cap="P_Factor_mean_values", fig.align='center'}
+knitr::include_graphics("Output/Article_Figures/A_Factor_mean_values.png")
+```
+
+```{r echo=FALSE, results='hide'}
+
+HR_diff <- writeRaster(resample(((rasterFromXYZ(HR10))-(rasterFromXYZ(HR50))), R), 'Output/Rasters/HR_diff.tif', format="GTiff", overwrite=TRUE)
+
+HR_diff[HR_diff < -0.00001] <- -1
+HR_diff[HR_diff > 0.00001] <- 1
+
+HR_diff_f <- fortify(data.frame(rasterToPoints(HR_diff)))
+colnames(HR_diff_f)<- c("x","y","A")
+
+
+png(width=1500,height=1500,res = 200, file="Output/Article_Figures/HR_10_50_diff.png")
+
+HR_diff_2 <- ggplot(HR_diff_f, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = A))+
+            scale_fill_gradientn(colours=c("#abdda4", "white", "#ef3b2c"), breaks=c(-1,0,1), 
+                                 labels = c("Decreased", "Unchanged", "Increased"))+
+  geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+  labs(title = "Difference 2010s - 1950s Rusle models", x = "",y = "")+
+   ggspatial::annotation_scale(location="br",
+                                                  plot_unit="km",
+                                                  style="ticks",
+                                                  pad_x = unit(2, "cm"))+
+                      ggspatial::annotation_north_arrow(location= "br",
+                                                        height = unit(1, "cm"),
+                                                        width = unit(1, "cm"),
+                                                        # pad_x = unit(, "cm"),
+                                                        style = north_arrow_orienteering(
+                                                          line_width = 1,
+                                                          line_col = "black",
+                                                          fill = c("black", "black"),
+                                                          text_col = "black",
+                                                          text_family = "",
+                                                          text_face = NULL,
+                                                          text_size = 3,
+                                                          text_angle = 0))+
+                       theme(plot.margin=unit(c(-0.5,-0.2,-0.5, -0.5), "cm"),
+                             plot.title = element_text(size=8, hjust = 0),
+                             axis.text.x = element_blank(),
+                             axis.text.y = element_blank(),
+                             axis.ticks = element_blank(),
+                             rect = element_blank())+
+                       coord_fixed()
+print(HR_diff_2)
+dev.off()
+
+```
+```{r echo=FALSE, out.width="100%", fig.cap="P_Factor_mean_values", fig.align='center'}
+knitr::include_graphics("Output/Article_Figures/HR_10_50_diff.png")
+```
+
+```{r echo=FALSE, results='hide'}
+
+# Scenarios
+
+# C_Factor_Woodland
+
+hlc_v$C_Factor_W <- case_when(hlc_v$LU_2010 == "Non irrigated arable land" ~ 0.0011,
+                           hlc_v$LU_2010 == "Grassland" ~ 0.0011,
+                            hlc_v$LU_2010 == "Sparsely vegetated areas" ~ 0.2652,
+                            hlc_v$LU_2010 == "Transitional woodland-shrub" ~ 0.0219,
+                            hlc_v$LU_2010 == "Mixed Forest" ~ 0.0011,
+                            hlc_v$LU_2010 == "Residential area" ~ 0.0003,
+                            hlc_v$LU_2010 == "Greenhouse" ~ 0.0011,
+                            hlc_v$LU_2010 == "Industrial area" ~ 0.0003,
+                            hlc_v$LU_2010 == "Agro - Forestry" ~ 0.0011,
+                            hlc_v$LU_2010 == "Vineyard" ~ 0.0011,
+                            hlc_v$LU_2010 == "Fruit Trees" ~ 0.0011,
+                            hlc_v$LU_2010 == "Water body" ~ 0)
+
+C_W_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","C_Factor_W")))), 
+                    "Raster")), layer = 3), R), 'Output/Rasters/C_Factor_W.tif', format="GTiff", overwrite=TRUE)
+
+# C_Factor_Grassland
+
+
+hlc_v$C_Factor_G <- case_when(hlc_v$LU_2010 == "Non irrigated arable land" ~ 0.0435,
+                           hlc_v$LU_2010 == "Grassland" ~ 0.0435,
+                            hlc_v$LU_2010 == "Sparsely vegetated areas" ~ 0.2652,
+                            hlc_v$LU_2010 == "Transitional woodland-shrub" ~ 0.0219,
+                            hlc_v$LU_2010 == "Mixed Forest" ~ 0.0011,
+                            hlc_v$LU_2010 == "Residential area" ~ 0.0003,
+                            hlc_v$LU_2010 == "Greenhouse" ~ 0.0435,
+                            hlc_v$LU_2010 == "Industrial area" ~ 0.0003,
+                            hlc_v$LU_2010 == "Agro - Forestry" ~ 0.0435,
+                            hlc_v$LU_2010 == "Vineyard" ~ 0.0435,
+                            hlc_v$LU_2010 == "Fruit Trees" ~ 0.0435,
+                            hlc_v$LU_2010 == "Water body" ~ 0)
+
+C_G_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","C_Factor_G")))), 
+                    "Raster")), layer = 3), R), 'Output/Rasters/C_Factor_G.tif', format="GTiff", overwrite=TRUE)
+
+# C_Factor_Arable_Land
+
+hlc_v$C_Factor_AL <- case_when(hlc_v$LU_2010 == "Non irrigated arable land" ~ 0.1232,
+                           hlc_v$LU_2010 == "Grassland" ~ 0.1232,
+                            hlc_v$LU_2010 == "Sparsely vegetated areas" ~ 0.2652,
+                            hlc_v$LU_2010 == "Transitional woodland-shrub" ~ 0.0219,
+                            hlc_v$LU_2010 == "Mixed Forest" ~ 0.0011,
+                            hlc_v$LU_2010 == "Residential area" ~ 0.0003,
+                            hlc_v$LU_2010 == "Greenhouse" ~ 0.1232,
+                            hlc_v$LU_2010 == "Industrial area" ~ 0.0003,
+                            hlc_v$LU_2010 == "Agro - Forestry" ~ 0.1232,
+                            hlc_v$LU_2010 == "Vineyard" ~ 0.1232,
+                            hlc_v$LU_2010 == "Fruit Trees" ~ 0.1232,
+                            hlc_v$LU_2010 == "Water body" ~ 0)
+
+C_AL_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","C_Factor_AL")))), 
+                    "Raster")), layer = 3), R), 'Output/Rasters/C_Factor_AL.tif', format="GTiff", overwrite=TRUE)
+
+## C_Factor_Agroforestry
+
+hlc_v$C_Factor_AF <- case_when(hlc_v$LU_2010 == "Non irrigated arable land" ~ 0.0881,
+                           hlc_v$LU_2010 == "Grassland" ~ 0.0881,
+                            hlc_v$LU_2010 == "Sparsely vegetated areas" ~ 0.2652,
+                            hlc_v$LU_2010 == "Transitional woodland-shrub" ~ 0.0219,
+                            hlc_v$LU_2010 == "Mixed Forest" ~ 0.0011,
+                            hlc_v$LU_2010 == "Residential area" ~ 0.0003,
+                            hlc_v$LU_2010 == "Greenhouse" ~ 0.0881,
+                            hlc_v$LU_2010 == "Industrial area" ~ 0.0003,
+                            hlc_v$LU_2010 == "Agro - Forestry" ~ 0.0881,
+                            hlc_v$LU_2010 == "Vineyard" ~ 0.0881,
+                            hlc_v$LU_2010 == "Fruit Trees" ~ 0.0881,
+                            hlc_v$LU_2010 == "Water body" ~ 0)
+
+C_AF_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","C_Factor_AF")))), 
+                    "Raster")), layer = 3), R), 'Output/Rasters/C_Factor_AF.tif', format="GTiff", overwrite=TRUE)
+
+
+C_Scenario_stack <- stack(C_W_r, C_G_r, C_AF_r, C_AL_r)
+
+
+# Best P Factor
+
+hlc_v$P_Factor_Best <- ((hlc_v$Area/hlc_v$NoF_1950)*hlc_v$Area^-1)/(hlc_v$slope_mean/100)
+
+hlc_v$P_Factor_Best <-case_when((hlc_v$CLASS_bt_1950 == 'TERRACE - Step Terrace' 
+                                 & hlc_v$slope_mean > 0 & hlc_v$slope_mean < 7)~ 0.10,
+                                (hlc_v$CLASS_bt_1950 == 'TERRACE - Contour Terrace' 
+                                 & hlc_v$slope_mean > 0 & hlc_v$slope_mean < 7)~ 0.10,
+                                (hlc_v$CLASS_bt_1950 == 'TERRACE - Step Terrace' 
+                                 & hlc_v$slope_mean > 7 & hlc_v$slope_mean < 11.3)~ 0.12,
+                                (hlc_v$CLASS_bt_1950 == 'TERRACE - Contour Terrace' 
+                                 & hlc_v$slope_mean > 7 & hlc_v$slope_mean < 11.3)~ 0.12,
+                                (hlc_v$CLASS_bt_1950 == 'TERRACE - Step Terrace' 
+                                 & hlc_v$slope_mean > 11.3 & hlc_v$slope_mean < 17.6)~ 0.16,
+                                (hlc_v$CLASS_bt_1950 == 'TERRACE - Contour Terrace' 
+                                 & hlc_v$slope_mean > 11.3 & hlc_v$slope_mean < 17.6)~ 0.16,
+                                (hlc_v$CLASS_bt_1950 == 'TERRACE - Step Terrace' 
+                                 & hlc_v$slope_mean > 17.6 & hlc_v$slope_mean < 26.8)~ 0.18,
+                                (hlc_v$CLASS_bt_1950 == 'TERRACE - Contour Terrace' 
+                                 & hlc_v$slope_mean > 17.6 & hlc_v$slope_mean < 26.8)~ 0.18,
+                                (hlc_v$CLASS_bt_1950 == 'TERRACE - Step Terrace' 
+                                 & hlc_v$slope_mean > 26.8)~ 0.18,
+                                (hlc_v$CLASS_bt_1950 == 'TERRACE - Contour Terrace' 
+                                 & hlc_v$slope_mean > 26.8)~ 0.18,
+                                TRUE ~ (hlc_v$P_Factor_Best))
+
+hlc_v$P_Factor_Best[is.na(hlc_v$P_Factor_Best)] <- 1
+hlc_v$P_Factor_Best[hlc_v$P_Factor_Best > 1 ] <- 1
+
+P_Best_r<- writeRaster(resample(raster((as(st_rasterize(st_as_sf(subset(hlc_v, select = c("x","y","P_Factor_Best")))), 
+                    "Raster")), layer = 3), R), 'Output/Rasters/P_Factor_Best.tif', format="GTiff", overwrite=TRUE)
+
+```
+```{r echo=FALSE, results='hide'}
+# Scenarios-RUSLE Models
+
+SRW_r <- writeRaster(resample((R*K*LS*C_W_r), R), 'Output/Rasters/Scenario_1.tif', format="GTiff", overwrite=TRUE)
+SRG_r <- writeRaster(resample((R*K*LS*C_G_r*P_Best_r), R), 'Output/Rasters/Scenario_2.tif', format="GTiff", overwrite=TRUE)
+SRAF_r <- writeRaster(resample((R*K*LS*C_AF_r*P_Best_r), R), 'Output/Rasters/Scenario_3.tif', format="GTiff", overwrite=TRUE)
+SRAL_r <- writeRaster(resample((R*K*LS*C_AL_r*P_Best_r), R), 'Output/Rasters/Scenario_4.tif', format="GTiff", overwrite=TRUE)
+
+# Plot Scenarios-RUSLE Models
+
+SRW<- data.frame(rasterToPoints(SRW_r))
+colnames(SRW)<- c("x","y","value")
+head(SRW)
+MeanSRW <- as.factor(signif((mean(SRW$value)), digits = 4))
+
+SRG<- data.frame(rasterToPoints(SRG_r))
+colnames(SRG)<- c("x","y","value")
+head(SRG)
+MeanSRG <- as.factor(signif((mean(SRG$value)), digits = 4))
+
+SRAF<- data.frame(rasterToPoints(SRAF_r))
+colnames(SRAF)<- c("x","y","value")
+head(SRAF)
+MeanSRAF <- as.factor(signif((mean(SRAF$value)), digits = 4))
+
+SRAL<- data.frame(rasterToPoints(SRAL_r))
+colnames(SRAL)<- c("x","y","value")
+head(SRAL)
+MeanSRAL <- as.factor(signif((mean(SRAL$value)), digits = 4))
+
+
+png(width=1000,height=1000,res = 100, file="Output/Article_Figures/Scenarios_Rusle_models.png")
+
+SRW_vis<-ggplotGrob(ggplot(SRW, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                      scale_fill_distiller(type = "seq",palette = "RdYlGn", 
+                                           guide = "colourbar", aesthetics = "fill",
+                                           limits = c(0,188), name="Mg ha-1 yr-1",
+                                           direction= -1)+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                      annotate(geom="text", x=609199/1000, y=4931000/1000, label="(1) Woodland", size = 3)+
+                       annotate(geom="text", x=610000/1000, y=4930700/1000, label="A mean = ", size = 3)+
+                      annotate(geom="text", x=611200/1000, y=4930700/1000, label= MeanSRW, size = 3)+
+                      labs(subtitle = "", x = "",y = "")+
+                      theme(plot.margin=unit(c(-0.5, 0,-0.5,-0.5), "cm"),
+                            plot.subtitle = element_text(size=8, hjust = 0.5),
+                            legend.position = "none",
+                            axis.text.x = element_blank(),
+                            axis.text.y = element_blank(),
+                            axis.ticks = element_blank(),
+                            rect = element_blank())+
+                      coord_fixed())
+
+SRG_vis<-ggplotGrob(ggplot(SRG, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                       scale_fill_distiller(type = "seq",palette = "RdYlGn", 
+                                            guide = "colourbar", aesthetics = "fill",
+                                            limits = c(0,188), name="Mg ha-1 yr-1",
+                                            direction= -1)+
+                      geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                       annotate(geom="text", x=609199/1000, y=4931000/1000, label="(2) Grassland", size = 3)+
+                       annotate(geom="text", x=610000/1000, y=4930700/1000, label="A mean = ", size = 3)+
+                       annotate(geom="text", x=611200/1000, y=4930700/1000, label= MeanSRG, size = 3)+
+                       labs(title = "", x = "",y = "")+
+                       theme(plot.margin=unit(c(-0.5, 0, -0.5,-0.5), "cm"),
+                             plot.title = element_text(size=8),
+                             legend.position = "none",
+                             axis.text.x = element_blank(),
+                             axis.text.y = element_blank(),
+                             axis.ticks = element_blank(),
+                             rect = element_blank())+
+                       coord_fixed())
+
+SRAF_vis<-ggplotGrob(ggplot(SRAF, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                       scale_fill_distiller(type = "seq",palette = "RdYlGn", 
+                                            guide = "colourbar", aesthetics = "fill",
+                                            limits = c(0,188), name="Mg ha-1 yr-1",
+                                            direction= -1)+
+                       geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                       annotate(geom="text", x=609199/1000, y=4931000/1000, label="(3) Agroforestry", size = 3)+
+                       annotate(geom="text", x=610000/1000, y=4930700/1000, label="A mean = ", size = 3)+
+                       annotate(geom="text", x=611200/1000, y=4930700/1000, label= MeanSRAF, size = 3)+
+                       labs(title = "", x = "",y = "")+
+                       theme(plot.margin=unit(c(-0.5, 0,-0.5,-0.5), "cm"),
+                             plot.title = element_text(size=8),
+                             legend.position = "none",
+                             axis.text.x = element_blank(),
+                             axis.text.y = element_blank(),
+                             axis.ticks = element_blank(),
+                             rect = element_blank())+
+                       coord_fixed())
+
+
+SRAL_vis<-ggplotGrob(ggplot(SRAL, aes(x=x/1000, y=y/1000)) + geom_tile(aes(fill = value))+
+                       scale_fill_distiller(type = "seq",palette = "RdYlGn", 
+                                            guide = "colourbar", aesthetics = "fill",
+                                            limits = c(0,188), name="Mg ha-1 yr-1",
+                                            direction= -1)+
+                       geom_polygon(aes(x=long/1000, y=lat/1000), data=roi, fill=NA,color="black", size=0.5, linetype=1)+
+                       annotate(geom="text", x=609199/1000, y=4931000/1000, label="(4) Arable Land", size = 3)+
+                       annotate(geom="text", x=610000/1000, y=4930700/1000, label="A mean = ", size = 3)+
+                       annotate(geom="text", x=611200/1000, y=4930700/1000, label= MeanSRAL, size = 3)+
+                       labs(title = "", x = "",y = "")+
+                        ggspatial::annotation_scale(location="br",
+                                                  plot_unit="km",
+                                                  style="ticks",
+                                                  pad_x = unit(2, "cm"))+
+                      ggspatial::annotation_north_arrow(location= "br",
+                                                        height = unit(1, "cm"),
+                                                        width = unit(1, "cm"),
+                                                        # pad_x = unit(, "cm"),
+                                                        style = north_arrow_orienteering(
+                                                          line_width = 1,
+                                                          line_col = "black",
+                                                          fill = c("black", "black"),
+                                                          text_col = "black",
+                                                          text_family = "",
+                                                          text_face = NULL,
+                                                          text_size = 3,
+                                                          text_angle = 0))+
+                       theme(plot.margin=unit(c(-0.5, 0,-0.5,-0.5), "cm"),
+                             plot.title = element_text(size=8),
+                             legend.position = "none",
+                             axis.text.x = element_blank(),
+                             axis.text.y = element_blank(),
+                             axis.ticks = element_blank(),
+                             rect = element_blank())+
+                       coord_fixed())
+
+combined_plot_SR <- grid.arrange(SRW_vis,SRG_vis,SRAF_vis,SRAL_vis,
+                                 widths = c(1,1),
+                                 layout_matrix = rbind(c(1, 2),
+                                                       c(3, 4)))
+
+
+plot_legend_SR <- ggplot(SRAL, aes(x=x, y=y)) + geom_tile(aes(fill = value))+
+  scale_fill_distiller(type = "seq",palette = "RdYlGn", 
+                       guide = "colourbar", aesthetics = "fill",
+                       limits = c(0,188), name="Mg ha-1 yr-1",
+                       direction= -1)+
+  theme(legend.position = "left",
+        legend.key.height = unit(4, 'cm'),
+        legend.key.width = unit(1,'cm'),
+        legend.title = element_text(size=12),
+        legend.text = element_text(size=10))+
+  coord_fixed()
+
+# function to extract legend from plot
+get_only_legend <- function(plot) {
+  plot_table <- ggplot_gtable(ggplot_build(plot))
+  legend_plot <- which(sapply(plot_table$grobs, function(x) x$name) == "guide-box")
+  legend <- plot_table$grobs[[legend_plot]]
+  return(legend)
+}
+
+# extract legend from plot1 using above function
+legend_SR <- get_only_legend(plot_legend_SR)   
+
+# final combined plot with shared legend
+grid.arrange(legend_SR, combined_plot_SR, ncol = 2, widths = c(1, 5))
+
+dev.off()
+```
+```{r echo=FALSE, out.width="100%", fig.cap="HLC_Rusle_models", fig.align='center'}
+knitr::include_graphics("Output/Article_Figures/Scenarios_Rusle_models.png")
+```
+```{r echo=FALSE, results='hide'}
+
+#Tables with C, P and A values
+
+CS_stack <- stack(C_W_r, C_G_r, C_AF_r, C_AL_r)
+Mean_CS <- data.frame(signif(cellStats(CS_stack, "mean"),digits = 4))
+colnames(Mean_CS) <- 'C_Factor'
+Mean_CS <- cbind(Mean_CS, Period = c("1950s","1970s","2000s","2010s"))
+Mean_CS <- Mean_CS[, c(2,1)]
+rownames(Mean_CS)<- NULL
+
+Mean_PB <- data.frame(signif(cellStats(P_Best_r, "mean"),digits = 4))
+rownames(Mean_PB)<- NULL
+
+AS_stack <- stack(SRW_r,SRG_r,SRAF_r,SRAL_r)
+Mean_AS <- data.frame(signif(cellStats(AS_stack, "mean"), digits = 4))
+colnames(Mean_AS) <- 'A_Factor'
+Mean_AS <- cbind(Mean_AS, Period = c("1950s","1970s","2000s","2010s"))
+Mean_AS <- Mean_AS[, c(2,1)]
+rownames(Mean_AS)<- NULL
+
+Summary_Table <- data.frame(matrix(nrow = 8, ncol= 4))
+Summary_Table <- cbind(Period = c("1950s","1970s","2000s","2010s","Scenario 1","Scenario 2", "Scenario 3", "Scenario 4"), C = c(Mean_C[1,2],Mean_C[2,2],Mean_C[3,2],Mean_C[4,2], Mean_CS[1,2],Mean_CS[2,2],Mean_CS[3,2],Mean_CS[4,2]), P = c(Mean_P[1,2],Mean_P[2,2],Mean_P[3,2],Mean_P[4,2], "N.A.",Mean_PB[1,1],Mean_PB[1,1],Mean_PB[1,1]), A=c(Mean_A[1,2], Mean_A[2,2],Mean_A[3,2],Mean_A[4,2], Mean_AS[1,2], Mean_AS[2,2],Mean_AS[3,2], Mean_AS[4,2]))
+```
+```{r echo=FALSE, results='hide'}
+#Export Tables in PDFs
+
+pdf(file="Output/Tables/Mean_C.pdf")
+grid.table(Mean_C)
+dev.off()
+
+pdf(file="Output/Tables/Mean_P.pdf")
+grid.table(Mean_P)
+dev.off()
+
+pdf(file="Output/Tables/Mean_A.pdf")
+grid.table(Mean_A)
+dev.off()
+
+pdf(file="Output/Tables/Mean_CS.pdf")
+grid.table(Mean_CS)
+dev.off()
+
+pdf(file="Output/Tables/Mean_PB.pdf")
+grid.table(Mean_PB)
+dev.off()
+
+pdf(file="Output/Tables/Mean_AS.pdf")
+grid.table(Mean_AS)
+dev.off()
+
+pdf(file="Output/Tables/Summary_Table.pdf")
+grid.table(Summary_Table)
+dev.off()
+```
