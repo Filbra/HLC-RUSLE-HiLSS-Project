@@ -1,4 +1,4 @@
-# Modelling-the-impact-of-cultural-landscapes-changes-on-soil-erosion-and-degradation.
+# HLC-RUSLE HiLSS Project.
 
 The R script code was developed by dr. F. Brandolini (Newcastle University, UK).
 
